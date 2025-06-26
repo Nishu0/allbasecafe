@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,52 +17,72 @@ const streamCategories = [
 
 const projectData = [
   {
-    id: "PROJECT_01.EXE",
-    title: "Base Dev Streams",
+    id: "PROJECT_01.BASE.ETH",
+    title: "AllBaseApp and Alarm App",
     description: "Live coding sessions focused on Base blockchain development and smart contract creation.",
-    tags: ["SOLIDITY", "BASE", "SMART CONTRACTS"],
+    tags: ["WEB", "WALLET", "BASE"],
     creator: "@baseddev",
     vibeScore: "+3",
-    type: "coding"
+    type: "coding",
+    image: "stream1.jpeg"
   },
   {
-    id: "PROJECT_02.EXE", 
-    title: "UI/UX Design Lab",
+    id: "PROJECT_02.BASE.ETH", 
+    title: "Making Cool App Assets with OpenAI",
     description: "Creating modern and intuitive interfaces for decentralized applications on Base.",
-    tags: ["DESIGN", "UI/UX", "FIGMA", "WEB3"],
+    tags: ["NFT", "OPENAI", "AI", "WEB3"],
     creator: "@designbase",
     vibeScore: "+2",
-    type: "design"
+    type: "design",
+    image: "stream2.jpeg"
   },
   {
-    id: "PROJECT_03.EXE",
-    title: "NFT Art Creation",
+    id: "PROJECT_03.BASE.ETH",
+    title: "AI Content, w/ someone special1",
     description: "Digital art streams creating unique NFT collections for the Base ecosystem.",
     tags: ["NFT", "DIGITAL ART", "BASE", "CREATIVE"],
     creator: "@artbase",
     vibeScore: "+4",
-    type: "art"
+    type: "art",
+    image: "stream3.jpeg"
   }
 ];
 
 const basedFolksData = [
   {
-    name: "Base Builder",
+    name: "Akhil",
     role: "Smart Contract Developer",
     description: "Building the future of DeFi on Base chain",
-    skills: ["Solidity", "React", "Node.js"]
+    skills: ["Solidity", "React", "Node.js"],
+    image: "akhil.jpg"
   },
   {
-    name: "Design Wizard",
+    name: "Siddhesh",
     role: "UI/UX Designer",
     description: "Crafting beautiful Web3 experiences",
-    skills: ["Figma", "React", "Design Systems"]
+    skills: ["Figma", "React", "Design Systems"],
+    image: "siddesh.jpg"
   },
   {
-    name: "Art Creator",
+    name: "Nisarg",
+    role: "Full Stack Developer",
+    description: "Creating seamless dApps on Base",
+    skills: ["TypeScript", "Next.js", "Smart Contracts"],
+    image: "nisarg.jpg"
+  },
+  {
+    name: "Yashika",
     role: "Digital Artist",
     description: "Creating stunning NFT collections",
-    skills: ["Photoshop", "Illustrator", "3D Art"]
+    skills: ["Photoshop", "Illustrator", "3D Art"],
+    image: "yashika.jpg"
+  },
+  {
+    name: "Naman",
+    role: "Blockchain Developer",
+    description: "Building innovative Base applications",
+    skills: ["Web3", "Solidity", "DeFi"],
+    image: "naman.jpg"
   }
 ];
 
@@ -92,10 +113,18 @@ export default function Home() {
 
       <div className="p-6">
         {/* Project Preview */}
-        <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg mb-4 flex items-center justify-center border border-border">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-primary mb-1">{project.title.split(' ')[0]}</div>
-            <div className="text-sm text-muted-foreground">{project.title.split(' ').slice(1).join(' ')}</div>
+        <div className="h-32 rounded-lg mb-4 overflow-hidden border border-border relative">
+          <Image
+            src={`/${project.image}`}
+            alt="Stream preview"
+            fill
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+            <div className="text-center text-white">
+              <div className="text-2xl font-bold mb-1">{project.title.split(' ')[0]}</div>
+              <div className="text-sm opacity-90">{project.title.split(' ').slice(1).join(' ')}</div>
+            </div>
           </div>
         </div>
 
@@ -240,7 +269,7 @@ export default function Home() {
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto"
       >
         {basedFolksData.map((person, index) => (
           <motion.div
@@ -248,15 +277,21 @@ export default function Home() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Card className="h-80 border-2 border-border bg-card hover:border-primary transition-colors">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 rounded-lg mb-4 flex items-center justify-center border border-border">
-                  <div className="text-4xl">👤</div>
+            <Card className="border-2 border-border bg-card hover:border-primary transition-colors">
+              <CardContent className="p-6">
+                <div className="aspect-square rounded-lg mb-4 overflow-hidden border border-border relative">
+                  <Image
+                    src={`/${person.image}`}
+                    alt={`${person.name} profile`}
+                    width={400}
+                    height={400}
+                    className="object-cover w-full h-full"
+                  />
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-1">{person.name}</h3>
-                  <p className="text-sm text-primary mb-2">{person.role}</p>
-                  <p className="text-sm text-muted-foreground mb-3">{person.description}</p>
+                <div className="space-y-3">
+                  <h3 className="font-bold text-lg">{person.name}</h3>
+                  <p className="text-sm text-primary font-semibold">{person.role}</p>
+                  <p className="text-sm text-muted-foreground">{person.description}</p>
                   <div className="flex flex-wrap gap-1">
                     {person.skills.map((skill) => (
                       <span key={skill} className="px-2 py-1 bg-muted text-xs rounded">
@@ -416,35 +451,50 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-border">
-        <div className="flex justify-center gap-8 py-4">
-          <Button
-            variant={activeSection === "home" ? "default" : "ghost"}
-            onClick={() => setActiveSection("home")}
-            className="font-semibold"
-          >
-            Home
-          </Button>
-          <Button
-            variant={activeSection === "based-folks" ? "default" : "ghost"}
-            onClick={() => setActiveSection("based-folks")}
-            className="font-semibold"
-          >
-            Based Folks
-          </Button>
-          <Button
-            variant={activeSection === "behind-scenes" ? "default" : "ghost"}
-            onClick={() => setActiveSection("behind-scenes")}
-            className="font-semibold"
-          >
-            Behind the Scenes
-          </Button>
-          <Button
-            variant={activeSection === "support" ? "default" : "ghost"}
-            onClick={() => setActiveSection("support")}
-            className="font-semibold"
-          >
-            Support
-          </Button>
+        <div className="flex justify-between items-center px-8 py-4">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <Image
+              src="/Base_Cafe_Logo.png"
+              alt="All Base Cafe Logo"
+              width={40}
+              height={40}
+              className="object-contain"
+            />
+            <span className="font-caveat font-bold text-xl text-primary">All Base Cafe</span>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="flex gap-6">
+            <Button
+              variant={activeSection === "home" ? "default" : "ghost"}
+              onClick={() => setActiveSection("home")}
+              className="font-semibold"
+            >
+              Home
+            </Button>
+            <Button
+              variant={activeSection === "based-folks" ? "default" : "ghost"}
+              onClick={() => setActiveSection("based-folks")}
+              className="font-semibold"
+            >
+              Based Folks
+            </Button>
+            <Button
+              variant={activeSection === "behind-scenes" ? "default" : "ghost"}
+              onClick={() => setActiveSection("behind-scenes")}
+              className="font-semibold"
+            >
+              Behind the Scenes
+            </Button>
+            <Button
+              variant={activeSection === "support" ? "default" : "ghost"}
+              onClick={() => setActiveSection("support")}
+              className="font-semibold"
+            >
+              Support
+            </Button>
+          </div>
         </div>
       </nav>
 
