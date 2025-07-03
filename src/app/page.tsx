@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,38 +15,22 @@ const streamCategories = [
   { id: "art", label: "Art", color: "bg-pink-500/20 border-pink-500/50" },
 ];
 
-const projectData = [
-  {
-    id: "PROJECT_01.BASE.ETH",
-    title: "AllBaseApp and Alarm App",
-    description: "Live coding sessions focused on Base blockchain development and smart contract creation.",
-    tags: ["WEB", "WALLET", "BASE"],
-    creator: "@baseddev",
-    vibeScore: "+3",
-    type: "coding",
-    image: "stream1.jpeg"
-  },
-  {
-    id: "PROJECT_02.BASE.ETH", 
-    title: "Making Cool App Assets with OpenAI",
-    description: "Creating modern and intuitive interfaces for decentralized applications on Base.",
-    tags: ["NFT", "OPENAI", "AI", "WEB3"],
-    creator: "@designbase",
-    vibeScore: "+2",
-    type: "design",
-    image: "stream2.jpeg"
-  },
-  {
-    id: "PROJECT_03.BASE.ETH",
-    title: "AI Content, w/ someone special1",
-    description: "Digital art streams creating unique NFT collections for the Base ecosystem.",
-    tags: ["NFT", "DIGITAL ART", "BASE", "CREATIVE"],
-    creator: "@artbase",
-    vibeScore: "+4",
-    type: "art",
-    image: "stream3.jpeg"
+// Helper function to determine stream type based on creator and content
+const getStreamType = (creator: string, name: string, tags: string[]) => {
+  if (creator === "@baseddev" || name.toLowerCase().includes("coding") || name.toLowerCase().includes("vibe")) {
+    return "coding";
   }
-];
+  if (creator === "@designbase" || tags.some(tag => ["AI", "CONTENT", "VIDEO", "GENERATION"].includes(tag))) {
+    return "design";
+  }
+  return "art";
+};
+
+// Helper function to generate project ID
+const generateProjectId = (name: string, index: number) => {
+  const shortName = name.split(" ").slice(0, 2).join("_").toUpperCase();
+  return `PROJECT_${(index + 1).toString().padStart(2, '0')}.${shortName}.BASE`;
+};
 
 const basedFolksData = [
   {
@@ -54,66 +38,189 @@ const basedFolksData = [
     role: "Smart Contract Developer",
     description: "Building the future of DeFi on Base chain",
     skills: ["Solidity", "React", "Node.js"],
-    image: "akhil.jpg"
+    image: "akhil.jpg",
+    xUrl: "https://x.com/akhil_bvs"
   },
   {
     name: "Siddhesh",
     role: "UI/UX Designer",
     description: "Crafting beautiful Web3 experiences",
     skills: ["Figma", "React", "Design Systems"],
-    image: "siddesh.jpg"
+    image: "siddesh.jpg",
+    xUrl: "https://x.com/0xSiddesh"
   },
   {
     name: "Nisarg",
     role: "Full Stack Developer",
     description: "Creating seamless dApps on Base",
     skills: ["TypeScript", "Next.js", "Smart Contracts"],
-    image: "nisarg.jpg"
+    image: "nisarg.jpg",
+    xUrl: "https://x.com/itznishuu_"
   },
   {
     name: "Yashika",
     role: "Digital Artist",
     description: "Creating stunning NFT collections",
     skills: ["Photoshop", "Illustrator", "3D Art"],
-    image: "yashika.jpg"
+    image: "yashika.jpg",
+    xUrl: "https://x.com/YashikaChugh4"
   },
   {
     name: "Naman",
     role: "Blockchain Developer",
     description: "Building innovative Base applications",
     skills: ["Web3", "Solidity", "DeFi"],
-    image: "naman.jpg"
+    image: "naman.jpg",
+    xUrl: "https://x.com/shirollsasaki"
+  },
+  {
+    name: "Ahaan",
+    role: "Product Manager",
+    description: "Driving product strategy for Base ecosystem",
+    skills: ["Product Strategy", "Analytics", "User Research"],
+    image: "ahaan.jpg",
+    xUrl: "https://x.com/AhaanRaizada"
+  },
+  {
+    name: "Bhaisaab",
+    role: "DevRel Engineer",
+    description: "Building developer communities on Base",
+    skills: ["Community Building", "Technical Writing", "Workshops"],
+    image: "bhaisaab.jpg",
+    xUrl: "https://x.com/0xBhaisaab"
+  },
+  {
+    name: "Bhavya",
+    role: "AI/ML Engineer",
+    description: "Integrating AI with blockchain technology",
+    skills: ["Machine Learning", "Python", "TensorFlow"],
+    image: "bhavya.jpg",
+    xUrl: "https://x.com/bhavya_gor"
+  },
+  {
+    name: "Gayatri",
+    role: "Technical Lead",
+    description: "Leading technical initiatives and architecture",
+    skills: ["System Design", "Leadership", "Architecture"],
+    image: "gayatri.jpg",
+    xUrl: "https://x.com/gayatri_gt"
+  },
+  {
+    name: "Ishika",
+    role: "Content Creator",
+    description: "Creating engaging content about Web3",
+    skills: ["Content Strategy", "Video Editing", "Social Media"],
+    image: "ishika.jpg",
+    xUrl: "https://x.com/IshikaMukerji"
+  },
+  {
+    name: "Kunal",
+    role: "Growth Hacker",
+    description: "Scaling Base projects and communities",
+    skills: ["Growth Marketing", "Analytics", "Community Growth"],
+    image: "kunal.jpg",
+    xUrl: "https://x.com/kunalvg"
+  },
+  {
+    name: "Samriti",
+    role: "Frontend Developer",
+    description: "Building beautiful user interfaces",
+    skills: ["React", "CSS", "JavaScript"],
+    image: "samriti.jpg",
+    xUrl: "https://x.com/21centurysappho"
+  },
+  {
+    name: "Saxenasaheb",
+    role: "Backend Developer",
+    description: "Creating robust server-side solutions",
+    skills: ["Node.js", "Databases", "API Design"],
+    image: "saxenasaheb.jpg",
+    xUrl: "https://x.com/Saxenasaheb"
+  },
+  {
+    name: "Irshad",
+    role: "Business Developer",
+    description: "Expanding Base ecosystem partnerships",
+    skills: ["Business Development", "Partnerships", "Strategy"],
+    image: "irshad.jpg",
+    xUrl: "https://x.com/irshaddahmed"
   }
 ];
+
+interface ProjectData {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  creator: string;
+  vibeScore: string;
+  type: string;
+  image: string;
+  status: string;
+}
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSection, setActiveSection] = useState("home");
+  const [projectData, setProjectData] = useState<ProjectData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load data from JSON
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await fetch('/api/data');
+        if (response.ok) {
+          const data = await response.json();
+          // Transform schedule data to project format
+          const transformedData: ProjectData[] = data.schedule.map((item: any, index: number) => ({
+            id: generateProjectId(item.name, index),
+            title: item.name,
+            description: item.description,
+            tags: item.tags || [],
+            creator: item.creator || "@artbase",
+            vibeScore: `+${Math.floor(Math.random() * 5) + 1}`,
+            type: getStreamType(item.creator || "@artbase", item.name, item.tags || []),
+            image: item.image || "stream1.jpeg",
+            status: item.status || "active"
+          }));
+          setProjectData(transformedData);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        // Fallback to empty array if error
+        setProjectData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const filteredProjects = activeCategory === "all" 
     ? projectData 
     : projectData.filter(project => project.type === activeCategory);
 
-  const ProjectCard = ({ project }: { project: typeof projectData[0] }) => (
+  const ProjectCard = ({ project }: { project: ProjectData }) => (
     <motion.div
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="bg-card border-2 border-border rounded-lg overflow-hidden"
+      className="bg-card border-2 border-border rounded-lg overflow-hidden h-[520px] flex flex-col"
     >
       {/* Terminal Header */}
-      <div className="bg-muted/50 border-b border-border px-4 py-2 flex items-center justify-between">
+      <div className="bg-muted/50 border-b border-border px-4 py-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500"></div>
           <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
           <div className="w-3 h-3 rounded-full bg-green-500"></div>
         </div>
-        <span className="text-sm font-mono text-muted-foreground">{project.id}</span>
-        <span className="text-sm font-mono text-muted-foreground">#{project.id.slice(-1)}</span>
+        <span className="text-sm font-mono text-muted-foreground truncate ml-2">{project.id}</span>
       </div>
 
-      <div className="p-6">
+      <div className="p-6 flex flex-col flex-1">
         {/* Project Preview */}
-        <div className="h-32 rounded-lg mb-4 overflow-hidden border border-border relative">
+        <div className="h-32 rounded-lg mb-4 overflow-hidden border border-border relative flex-shrink-0">
           <Image
             src={`/${project.image}`}
             alt="Stream preview"
@@ -122,40 +229,67 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
             <div className="text-center text-white">
-              <div className="text-2xl font-bold mb-1">{project.title.split(' ')[0]}</div>
-              <div className="text-sm opacity-90">{project.title.split(' ').slice(1).join(' ')}</div>
+              <div className="text-xl font-bold mb-1 truncate px-2">
+                {project.title.split(' ')[0]}
+              </div>
+              <div className="text-sm opacity-90 truncate px-2">
+                {project.title.split(' ').slice(1).join(' ')}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Project Info */}
-        <div className="space-y-3">
-          <h3 className="font-bold text-lg text-foreground">{project.title}</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
+        {/* Project Info - Flexible container */}
+        <div className="flex flex-col flex-1">
+          {/* Title */}
+          <h3 className="font-bold text-lg text-foreground mb-2 line-clamp-2 min-h-[3.5rem]">
+            {project.title}
+          </h3>
           
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2">
-            {project.tags.map((tag) => (
-              <span key={tag} className="px-2 py-1 bg-primary/10 text-primary text-xs font-mono rounded border border-primary/20">
-                {tag}
-              </span>
-            ))}
+          {/* Description with fixed height */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-3 h-[4.5rem] overflow-hidden">
+            {project.description}
+          </p>
+          
+          {/* Tags - Fixed height container */}
+          <div className="mb-3 h-[2.5rem] overflow-hidden">
+            <div className="flex flex-wrap gap-1">
+              {project.tags.slice(0, 4).map((tag) => (
+                <span key={tag} className="px-2 py-1 bg-primary/10 text-primary text-xs font-mono rounded border border-primary/20 whitespace-nowrap">
+                  {tag}
+                </span>
+              ))}
+              {project.tags.length > 4 && (
+                <span className="px-2 py-1 bg-muted text-muted-foreground text-xs font-mono rounded border border-border">
+                  +{project.tags.length - 4}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Creator */}
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground mb-4">
             <span>CREATOR: </span>
             <span className="text-primary font-mono">{project.creator}</span>
           </div>
 
-          {/* Execute Button */}
-          <div className="border-t border-border pt-3">
-            <Button variant="outline" className="w-full font-mono text-sm">
-              &gt; WATCH_STREAM
+          {/* Spacer to push bottom content down */}
+          <div className="flex-1"></div>
+
+          {/* Execute Button - Always at bottom */}
+          <div className="border-t border-border pt-3 mb-3">
+            <Button 
+              variant="outline" 
+              className="w-full font-mono text-sm"
+              disabled={project.status === "Cancelled"}
+            >
+              {project.status === "Cancelled" ? "&gt; CANCELLED" : 
+               project.status === "Planned" ? "&gt; COMING_SOON" : 
+               "&gt; WATCH_STREAM"}
             </Button>
           </div>
 
-          {/* Vibe Score */}
+          {/* Vibe Score - Always at bottom */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <div className="flex gap-2">
               <div className="flex items-center gap-1">
@@ -173,7 +307,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="text-xs text-muted-foreground text-center">
+          <div className="text-xs text-muted-foreground text-center mt-2">
             Connect wallet to vote on-chain
           </div>
         </div>
@@ -235,9 +369,40 @@ export default function Home() {
         transition={{ duration: 0.8, delay: 0.4 }}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto"
       >
-        {filteredProjects.map((project, index) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
+        {loading ? (
+          // Loading state
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="bg-card border-2 border-border rounded-lg overflow-hidden animate-pulse h-[520px] flex flex-col">
+              <div className="bg-muted/50 border-b border-border px-4 py-2 h-10 flex-shrink-0"></div>
+              <div className="p-6 flex flex-col flex-1">
+                <div className="h-32 bg-muted rounded-lg mb-4 flex-shrink-0"></div>
+                <div className="flex flex-col flex-1">
+                  <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-full mb-1"></div>
+                  <div className="h-4 bg-muted rounded w-2/3 mb-3"></div>
+                  <div className="flex gap-2 mb-3">
+                    <div className="h-6 bg-muted rounded w-16"></div>
+                    <div className="h-6 bg-muted rounded w-16"></div>
+                  </div>
+                  <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                  <div className="flex-1"></div>
+                  <div className="h-10 bg-muted rounded mb-3"></div>
+                  <div className="h-16 bg-muted rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : filteredProjects.length > 0 ? (
+          filteredProjects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-12">
+            <div className="text-muted-foreground text-lg">
+              No streams found for the selected category.
+            </div>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -276,28 +441,44 @@ export default function Home() {
             key={index}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => window.open(person.xUrl, '_blank')}
+            className="cursor-pointer"
           >
-            <Card className="border-2 border-border bg-card hover:border-primary transition-colors">
-              <CardContent className="p-6">
-                <div className="aspect-square rounded-lg mb-4 overflow-hidden border border-border relative">
+            <Card className="border-2 border-border bg-card hover:border-primary transition-colors h-[380px] flex flex-col">
+              <CardContent className="p-6 flex flex-col h-full">
+                <div className="aspect-square rounded-full mb-4 overflow-hidden border-2 border-primary/20 relative mx-auto w-32 h-32 flex-shrink-0 hover:border-primary/50 transition-colors">
                   <Image
                     src={`/${person.image}`}
                     alt={`${person.name} profile`}
-                    width={400}
-                    height={400}
-                    className="object-cover w-full h-full"
+                    fill
+                    className="object-cover"
                   />
+                  {/* X/Twitter icon overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-8 h-8 text-white">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  <h3 className="font-bold text-lg">{person.name}</h3>
-                  <p className="text-sm text-primary font-semibold">{person.role}</p>
-                  <p className="text-sm text-muted-foreground">{person.description}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {person.skills.map((skill) => (
-                      <span key={skill} className="px-2 py-1 bg-muted text-xs rounded">
-                        {skill}
-                      </span>
-                    ))}
+                <div className="flex flex-col flex-1">
+                  <h3 className="font-bold text-lg text-center mb-2 line-clamp-1">{person.name}</h3>
+                  <p className="text-sm text-primary font-semibold text-center mb-3 line-clamp-1">{person.role}</p>
+                  <p className="text-sm text-muted-foreground text-center mb-3 line-clamp-3 flex-1">{person.description}</p>
+                  <div className="h-[2.5rem] overflow-hidden">
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {person.skills.slice(0, 3).map((skill) => (
+                        <span key={skill} className="px-2 py-1 bg-muted text-xs rounded whitespace-nowrap">
+                          {skill}
+                        </span>
+                      ))}
+                      {person.skills.length > 3 && (
+                        <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded border border-primary/20">
+                          +{person.skills.length - 3}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
