@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConnectKitButton } from 'connectkit';
 
 const streamCategories = [
   { id: "coding", label: "Coding", color: "bg-blue-500/20 border-blue-500/50" },
@@ -646,7 +647,7 @@ export default function Home() {
           </div>
 
           {/* Navigation Links */}
-          <div className="flex gap-6">
+          <div className="flex gap-6 items-center">
             <Button
               variant={activeSection === "home" ? "default" : "ghost"}
               onClick={() => setActiveSection("home")}
@@ -675,6 +676,11 @@ export default function Home() {
             >
               Support
             </Button>
+            
+            {/* ConnectKit Wallet Button */}
+            <div className="ml-4">
+              <ConnectKitButton />
+            </div>
           </div>
         </div>
       </nav>
