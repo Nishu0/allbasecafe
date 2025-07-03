@@ -4,13 +4,12 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConnectKitProvider, getDefaultConfig } from 'connectkit';
 import { createConfig, http } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
+import { baseSepolia } from 'wagmi/chains';
 
 const config = createConfig(
   getDefaultConfig({
-    chains: [base, baseSepolia],
+    chains: [ baseSepolia],
     transports: {
-      [base.id]: http(),
       [baseSepolia.id]: http(),
     },
     walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',

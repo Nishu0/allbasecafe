@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConnectKitButton } from 'connectkit';
+import { useReadContract, useWriteContract, useAccount } from 'wagmi';
+import { BASE_CONTRACT_ADDRESS, PROJECT_VOTING_ABI } from '@/constant/contract';
 
 const streamCategories = [
   { id: "coding", label: "Coding", color: "bg-blue-500/20 border-blue-500/50" },
@@ -158,6 +160,10 @@ interface ProjectData {
   type: string;
   image: string;
   status: string;
+  contractId: number;
+  totalLikes: number;
+  totalDislikes: number;
+  userVote: number; // 0 = None, 1 = Like, 2 = Dislike
 }
 
 export default function Home() {
@@ -165,8 +171,98 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState("home");
   const [projectData, setProjectData] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const { address } = useAccount();
+  const { writeContract, isPending: isVoting } = useWriteContract();
 
-  // Load data from JSON
+  // Function to update contract data
+  const updateContractData = async () => {
+    if (projectData.length === 0) {
+      console.log('No project data to update');
+      return;
+    }
+    
+    console.log('Updating contract data for', projectData.length, 'projects');
+    
+    try {
+      const updatedData = await Promise.all(
+        projectData.map(async (project) => {
+          try {
+            // Read project data from contract
+            const contractResponse = await fetch('/api/contract/getProject', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                projectId: project.contractId,
+                userAddress: address 
+              })
+            });
+            
+            let contractData = { totalLikes: 0, totalDislikes: 0, userVote: 0 };
+            if (contractResponse.ok) {
+              contractData = await contractResponse.json();
+              console.log(`Project ${project.contractId} contract data:`, contractData);
+            } else {
+              console.error(`Failed to fetch contract data for project ${project.contractId}:`, contractResponse.status);
+            }
+            
+            const updatedProject = {
+              ...project,
+              totalLikes: contractData.totalLikes || 0,
+              totalDislikes: contractData.totalDislikes || 0,
+              userVote: contractData.userVote || 0
+            };
+            
+            console.log(`Updated project ${project.contractId}:`, {
+              title: updatedProject.title,
+              totalLikes: updatedProject.totalLikes,
+              totalDislikes: updatedProject.totalDislikes,
+              userVote: updatedProject.userVote
+            });
+            
+            return updatedProject;
+          } catch (error) {
+            console.error(`Error loading contract data for project ${project.contractId}:`, error);
+            return project;
+          }
+        })
+      );
+      
+      console.log('Setting updated project data:', updatedData.length, 'projects');
+      setProjectData(updatedData);
+    } catch (error) {
+      console.error('Error updating contract data:', error);
+    }
+  };
+
+  // Handle voting
+  const handleVote = async (projectId: number, voteChoice: number) => {
+    if (!address) {
+      alert("Please connect your wallet to vote");
+      return;
+    }
+
+    try {
+      await writeContract({
+        address: BASE_CONTRACT_ADDRESS,
+        abi: PROJECT_VOTING_ABI,
+        functionName: 'vote',
+        args: [BigInt(projectId), voteChoice],
+      });
+      
+      // Refresh contract data after voting
+      setTimeout(async () => {
+        await updateContractData();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Voting failed:', error);
+    }
+  };
+
+  // Load data from JSON and set initial state
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -183,9 +279,14 @@ export default function Home() {
             vibeScore: `+${Math.floor(Math.random() * 5) + 1}`,
             type: getStreamType(item.creator || "@artbase", item.name, item.tags || []),
             image: item.image || "stream1.jpeg",
-            status: item.status || "active"
+            status: item.status || "active",
+            contractId: index,
+            totalLikes: 0,
+            totalDislikes: 0,
+            userVote: 0
           }));
           setProjectData(transformedData);
+          setDataLoaded(true);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -199,15 +300,38 @@ export default function Home() {
     loadData();
   }, []);
 
+  // Update with contract data when address changes or data is loaded
+  useEffect(() => {
+    if (dataLoaded) {
+      updateContractData();
+    }
+  }, [address, dataLoaded]);
+
+  // Close mobile menu when section changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [activeSection]);
+
   const filteredProjects = activeCategory === "all" 
     ? projectData 
     : projectData.filter(project => project.type === activeCategory);
 
-  const ProjectCard = ({ project }: { project: ProjectData }) => (
+  const ProjectCard = ({ project }: { project: ProjectData }) => {
+    // Debug log for this specific project
+    if (project.contractId === 0) {
+      console.log('Rendering first project card with data:', {
+        title: project.title,
+        totalLikes: project.totalLikes,
+        totalDislikes: project.totalDislikes,
+        userVote: project.userVote
+      });
+    }
+    
+    return (
     <motion.div
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="bg-card border-2 border-border rounded-lg overflow-hidden h-[520px] flex flex-col"
+      className="bg-card border-2 border-border rounded-lg overflow-hidden h-[600px] flex flex-col"
     >
       {/* Terminal Header */}
       <div className="bg-muted/50 border-b border-border px-4 py-2 flex items-center justify-between flex-shrink-0">
@@ -221,7 +345,7 @@ export default function Home() {
 
       <div className="p-6 flex flex-col flex-1">
         {/* Project Preview */}
-        <div className="h-32 rounded-lg mb-4 overflow-hidden border border-border relative flex-shrink-0">
+        <div className="h-24 rounded-lg mb-3 overflow-hidden border border-border relative flex-shrink-0">
           <Image
             src={`/${project.image}`}
             alt="Stream preview"
@@ -230,10 +354,10 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
             <div className="text-center text-white">
-              <div className="text-xl font-bold mb-1 truncate px-2">
+              <div className="text-lg font-bold mb-1 truncate px-2">
                 {project.title.split(' ')[0]}
               </div>
-              <div className="text-sm opacity-90 truncate px-2">
+              <div className="text-xs opacity-90 truncate px-2">
                 {project.title.split(' ').slice(1).join(' ')}
               </div>
             </div>
@@ -243,33 +367,33 @@ export default function Home() {
         {/* Project Info - Flexible container */}
         <div className="flex flex-col flex-1">
           {/* Title */}
-          <h3 className="font-bold text-lg text-foreground mb-2 line-clamp-2 min-h-[3.5rem]">
+          <h3 className="font-bold text-lg text-foreground mb-2 line-clamp-2 min-h-[3rem]">
             {project.title}
           </h3>
           
           {/* Description with fixed height */}
-          <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-3 h-[4.5rem] overflow-hidden">
+          <p className="text-sm text-muted-foreground leading-relaxed mb-2 line-clamp-2 h-[3rem] overflow-hidden">
             {project.description}
           </p>
           
           {/* Tags - Fixed height container */}
-          <div className="mb-3 h-[2.5rem] overflow-hidden">
+          <div className="mb-2 h-[2rem] overflow-hidden">
             <div className="flex flex-wrap gap-1">
-              {project.tags.slice(0, 4).map((tag) => (
+              {project.tags.slice(0, 3).map((tag) => (
                 <span key={tag} className="px-2 py-1 bg-primary/10 text-primary text-xs font-mono rounded border border-primary/20 whitespace-nowrap">
                   {tag}
                 </span>
               ))}
-              {project.tags.length > 4 && (
+              {project.tags.length > 3 && (
                 <span className="px-2 py-1 bg-muted text-muted-foreground text-xs font-mono rounded border border-border">
-                  +{project.tags.length - 4}
+                  +{project.tags.length - 3}
                 </span>
               )}
             </div>
           </div>
 
           {/* Creator */}
-          <div className="text-sm text-muted-foreground mb-4">
+          <div className="text-sm text-muted-foreground mb-2">
             <span>CREATOR: </span>
             <span className="text-primary font-mono">{project.creator}</span>
           </div>
@@ -278,7 +402,7 @@ export default function Home() {
           <div className="flex-1"></div>
 
           {/* Execute Button - Always at bottom */}
-          <div className="border-t border-border pt-3 mb-3">
+          <div className="border-t border-border pt-2 mb-2">
             <Button 
               variant="outline" 
               className="w-full font-mono text-sm"
@@ -290,49 +414,90 @@ export default function Home() {
             </Button>
           </div>
 
-          {/* Vibe Score - Always at bottom */}
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <div className="flex gap-2">
-              <div className="flex items-center gap-1">
-                <span className="text-yellow-500">👍</span>
-                <span className="text-sm">{Math.floor(Math.random() * 10) + 1}</span>
+          {/* Voting Section - Always at bottom */}
+          <div className="space-y-2">
+            {/* Debug info - Make it more visible */}
+            {/* <div className="text-center">
+              <div className="text-xs text-yellow-400 font-mono bg-yellow-400/10 p-2 rounded border">
+                Debug: Likes={project.totalLikes} | Dislikes={project.totalDislikes} | UserVote={project.userVote}
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-gray-500">👎</span>
-                <span className="text-sm">{Math.floor(Math.random() * 3)}</span>
+            </div> */}
+            
+            {/* Voting Buttons */}
+            <div className="flex items-center justify-center gap-3 p-2 bg-muted/30 rounded border">
+              <button
+                onClick={() => {
+                  console.log(`Voting for project ${project.contractId} with choice 1 (Like)`);
+                  handleVote(project.contractId, 1);
+                }}
+                disabled={isVoting || !address}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  project.userVote === 1 
+                    ? 'bg-green-500 text-white shadow-lg' 
+                    : 'bg-green-500/20 text-green-600 hover:bg-green-500/30 border border-green-500/50'
+                } ${!address ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-105'}`}
+              >
+                <span className="text-lg">👍</span>
+                <span className="font-bold">{project.totalLikes}</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  console.log(`Voting for project ${project.contractId} with choice 2 (Dislike)`);
+                  handleVote(project.contractId, 2);
+                }}
+                disabled={isVoting || !address}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  project.userVote === 2 
+                    ? 'bg-red-500 text-white shadow-lg' 
+                    : 'bg-red-500/20 text-red-600 hover:bg-red-500/30 border border-red-500/50'
+                } ${!address ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-105'}`}
+              >
+                <span className="text-lg">👎</span>
+                <span className="font-bold">{project.totalDislikes}</span>
+              </button>
+            </div>
+            
+            {/* Status and Instructions */}
+            <div className="text-center space-y-1">
+              <div className="text-sm font-mono text-green-400">
+                Vibe Score: +{project.totalLikes - project.totalDislikes}
               </div>
+              <div className="text-xs text-muted-foreground">
+                {project.userVote === 1 ? '✅ You liked this stream' : 
+                 project.userVote === 2 ? '❌ You disliked this stream' : 
+                 address ? '🗳️ Cast your vote on-chain' : '🔐 Connect wallet to vote'}
+              </div>
+              {isVoting && (
+                <div className="text-xs text-yellow-400 font-mono animate-pulse">
+                  ⏳ Voting transaction in progress...
+                </div>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-sm font-mono text-green-400">Vibe Score: {project.vibeScore}</div>
-              <div className="text-xs text-muted-foreground">+1 • +0</div>
-            </div>
-          </div>
-          
-          <div className="text-xs text-muted-foreground text-center mt-2">
-            Connect wallet to vote on-chain
           </div>
         </div>
       </div>
     </motion.div>
-  );
+    );
+  };
 
   const renderHome = () => (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen px-8 py-16"
+      className="min-h-screen px-4 md:px-8 py-8 md:py-16"
     >
       {/* Header */}
       <motion.div 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="text-center mb-16"
+        className="text-center mb-8 md:mb-16"
       >
-        <div className="font-mono text-sm text-muted-foreground mb-4">
+        <div className="font-mono text-xs md:text-sm text-muted-foreground mb-2 md:mb-4 px-2">
           Directory of BASE:\BASE_CAFE\FEATURED_STREAMS
         </div>
-        <h1 className="text-6xl md:text-8xl font-caveat font-bold text-primary mb-4">
+        <h1 className="text-4xl md:text-6xl lg:text-8xl font-caveat font-bold text-primary mb-4 px-2">
           All Base Cafe
         </h1>
       </motion.div>
@@ -342,12 +507,12 @@ export default function Home() {
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="flex justify-center gap-4 mb-16 flex-wrap"
+        className="flex justify-center gap-2 md:gap-4 mb-8 md:mb-16 flex-wrap px-2"
       >
         <Button
           variant={activeCategory === "all" ? "default" : "outline"}
           onClick={() => setActiveCategory("all")}
-          className="font-semibold"
+          className="font-semibold text-sm md:text-base"
         >
           All Projects
         </Button>
@@ -356,7 +521,7 @@ export default function Home() {
             key={category.id}
             variant={activeCategory === category.id ? "default" : "outline"}
             onClick={() => setActiveCategory(category.id)}
-            className="font-semibold"
+            className="font-semibold text-sm md:text-base"
           >
             {category.label}
           </Button>
@@ -373,22 +538,22 @@ export default function Home() {
         {loading ? (
           // Loading state
           Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="bg-card border-2 border-border rounded-lg overflow-hidden animate-pulse h-[520px] flex flex-col">
+            <div key={index} className="bg-card border-2 border-border rounded-lg overflow-hidden animate-pulse h-[600px] flex flex-col">
               <div className="bg-muted/50 border-b border-border px-4 py-2 h-10 flex-shrink-0"></div>
               <div className="p-6 flex flex-col flex-1">
-                <div className="h-32 bg-muted rounded-lg mb-4 flex-shrink-0"></div>
+                <div className="h-24 bg-muted rounded-lg mb-3 flex-shrink-0"></div>
                 <div className="flex flex-col flex-1">
                   <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
                   <div className="h-4 bg-muted rounded w-full mb-1"></div>
-                  <div className="h-4 bg-muted rounded w-2/3 mb-3"></div>
-                  <div className="flex gap-2 mb-3">
+                  <div className="h-4 bg-muted rounded w-2/3 mb-2"></div>
+                  <div className="flex gap-2 mb-2">
                     <div className="h-6 bg-muted rounded w-16"></div>
                     <div className="h-6 bg-muted rounded w-16"></div>
                   </div>
-                  <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
                   <div className="flex-1"></div>
-                  <div className="h-10 bg-muted rounded mb-3"></div>
-                  <div className="h-16 bg-muted rounded"></div>
+                  <div className="h-10 bg-muted rounded mb-2"></div>
+                  <div className="h-20 bg-muted rounded"></div>
                 </div>
               </div>
             </div>
@@ -412,21 +577,21 @@ export default function Home() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen px-8 py-16"
+      className="min-h-screen px-4 md:px-8 py-8 md:py-16"
     >
       <motion.div 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="text-center mb-16"
+        className="text-center mb-8 md:mb-16"
       >
-        <h1 className="text-6xl md:text-8xl font-caveat font-bold text-primary mb-8">
+        <h1 className="text-4xl md:text-6xl lg:text-8xl font-caveat font-bold text-primary mb-4 md:mb-8">
           Based Folks
         </h1>
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-2">
           <Input 
             placeholder="Search based folks..." 
-            className="h-16 text-lg border-2 border-border bg-input font-mono"
+            className="h-12 md:h-16 text-base md:text-lg border-2 border-border bg-input font-mono"
           />
         </div>
       </motion.div>
@@ -494,15 +659,15 @@ export default function Home() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen px-8 py-16"
+      className="min-h-screen px-4 md:px-8 py-8 md:py-16"
     >
       <motion.div 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="text-center mb-16"
+        className="text-center mb-8 md:mb-16"
       >
-        <h1 className="text-6xl md:text-8xl font-caveat font-bold text-primary mb-8">
+        <h1 className="text-4xl md:text-6xl lg:text-8xl font-caveat font-bold text-primary mb-4 md:mb-8">
           Behind the Scenes
         </h1>
       </motion.div>
@@ -553,15 +718,15 @@ export default function Home() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen px-8 py-16"
+      className="min-h-screen px-4 md:px-8 py-8 md:py-16"
     >
       <motion.div 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="text-center mb-16"
+        className="text-center mb-8 md:mb-16"
       >
-        <h1 className="text-6xl md:text-8xl font-caveat font-bold text-primary mb-8">
+        <h1 className="text-4xl md:text-6xl lg:text-8xl font-caveat font-bold text-primary mb-4 md:mb-8">
           Support Form
         </h1>
       </motion.div>
@@ -633,21 +798,21 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-border">
-        <div className="flex justify-between items-center px-8 py-4">
+        <div className="flex justify-between items-center px-4 md:px-8 py-4">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <Image
               src="/Base_Cafe_Logo.png"
               alt="All Base Cafe Logo"
-              width={40}
-              height={40}
-              className="object-contain"
+              width={32}
+              height={32}
+              className="object-contain md:w-10 md:h-10"
             />
-            <span className="font-caveat font-bold text-xl text-primary">All Base Cafe</span>
+            <span className="font-caveat font-bold text-lg md:text-xl text-primary">All Base Cafe</span>
           </div>
 
-          {/* Navigation Links */}
-          <div className="flex gap-6 items-center">
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex gap-6 items-center">
             <Button
               variant={activeSection === "home" ? "default" : "ghost"}
               onClick={() => setActiveSection("home")}
@@ -682,11 +847,87 @@ export default function Home() {
               <ConnectKitButton />
             </div>
           </div>
+
+          {/* Mobile Menu Button & Wallet */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="">
+              <ConnectKitButton />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2"
+            >
+              {mobileMenuOpen ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="md:hidden bg-background/95 backdrop-blur-sm border-t border-border"
+          >
+            <div className="px-4 py-4 space-y-2">
+              <Button
+                variant={activeSection === "home" ? "default" : "ghost"}
+                onClick={() => {
+                  setActiveSection("home");
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-start font-semibold"
+              >
+                Home
+              </Button>
+              <Button
+                variant={activeSection === "based-folks" ? "default" : "ghost"}
+                onClick={() => {
+                  setActiveSection("based-folks");
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-start font-semibold"
+              >
+                Based Folks
+              </Button>
+              <Button
+                variant={activeSection === "behind-scenes" ? "default" : "ghost"}
+                onClick={() => {
+                  setActiveSection("behind-scenes");
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-start font-semibold"
+              >
+                Behind the Scenes
+              </Button>
+              <Button
+                variant={activeSection === "support" ? "default" : "ghost"}
+                onClick={() => {
+                  setActiveSection("support");
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full justify-start font-semibold"
+              >
+                Support
+              </Button>
+            </div>
+          </motion.div>
+        )}
       </nav>
 
       {/* Main Content */}
-      <div className="pt-20">
+      <div className="pt-16 md:pt-20">
         {renderSection()}
       </div>
     </div>
